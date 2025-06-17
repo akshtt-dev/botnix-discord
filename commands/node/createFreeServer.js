@@ -68,24 +68,22 @@ export default {
     const disk = interaction.options.getNumber("disk");
     const name = interaction.options.getString("name") || "New Server";
     const targetUser = interaction.options.getUser("user") || interaction.user;
-    const PTERO_API_KEY = client.config.PTERODACTYL_PANEL.panelAPIKey;
-    const PTERO_URL = client.config.PTERODACTYL_PANEL.panelURL;
-    const panelUserAgent =
-      client.config.PTERODACTYL_PANEL.panelUserAgent || "DiscordBot";
+
+    const {
+      panelAPIKey: PTERO_API_KEY,
+      panelURL: PTERO_URL,
+      panelUserAgent = "DiscordBot",
+      freeNodeId = "2",
+      eggMap,
+    } = client.config.PTERODACTYL_PANEL;
 
     await interaction.deferReply();
 
     if (!PTERO_API_KEY || !PTERO_URL) {
-      return interaction.editReply(
-        "❌ Panel is not set up for this server. Please contact the server admin."
-      );
+      return interaction.editReply("❌ Panel is not set up correctly.");
     }
 
-    const NODE_ID = client.config.PTERODACTYL_PANEL.freeNodeId || "1";
-
-    const eggMap = client.config.PTERODACTYL_PANEL.eggMap;
     const eggInfo = eggMap[type.toLowerCase()];
-
     if (!eggInfo) {
       const embed = new EmbedBuilder()
         .setColor("Red")
@@ -98,9 +96,8 @@ export default {
     }
 
     try {
-      // ✅ Lookup user in global database
+      // 🔍 Lookup user
       const panelUser = await User.findOne({ userId: targetUser.id });
-
       if (!panelUser || !panelUser.panelUserId) {
         const embed = new EmbedBuilder()
           .setColor("Red")
@@ -111,7 +108,7 @@ export default {
         return interaction.editReply({ embeds: [embed] });
       }
 
-      // ✅ Fetch egg details
+      // 🧪 Fetch egg
       const eggDetails = await axios.get(
         `${PTERO_URL}/api/application/nests/${eggInfo.nestId}/eggs/${eggInfo.eggId}?include=variables`,
         {
@@ -127,11 +124,30 @@ export default {
       const dockerImage = egg.docker_image;
       const startup = egg.startup;
 
-      // ✅ Setup environment variables
       const environment = {};
       for (const variable of egg.relationships.variables.data) {
         environment[variable.attributes.env_variable] =
           variable.attributes.default_value || "";
+      }
+
+      // 🌐 Fetch allocations for specific node
+      const allocRes = await axios.get(
+        `${PTERO_URL}/api/application/nodes/${freeNodeId}/allocations`,
+        {
+          headers: {
+            Authorization: `Bearer ${PTERO_API_KEY}`,
+            Accept: "application/json",
+            "User-Agent": panelUserAgent,
+          },
+        }
+      );
+
+      const availableAlloc = allocRes.data.data.find(
+        (a) => a.attributes.assigned === false
+      );
+
+      if (!availableAlloc) {
+        return interaction.editReply("❌ No available allocations on Node 2.");
       }
 
       // ✅ Create the server
@@ -156,11 +172,7 @@ export default {
             allocations: 1,
             backups: 1,
           },
-          deploy: {
-            locations: [NODE_ID],
-            dedicated_ip: false,
-            port_range: [],
-          },
+          allocation: availableAlloc.attributes.id,
           start_on_completion: false,
         },
         {
@@ -189,6 +201,7 @@ export default {
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
+
       try {
         sendFreeLogs({
           server: {
@@ -202,7 +215,7 @@ export default {
           creator: interaction.user,
         });
       } catch (logError) {
-        console.error("❌ Error sending server creation logs:", logError);
+        console.error("❌ Error sending logs:", logError);
       }
     } catch (error) {
       console.error(
@@ -210,7 +223,7 @@ export default {
         error.response?.data || error.message
       );
       await interaction.editReply(
-        "❌ Failed to create server. Please ask panel admin to check the logs."
+        "❌ Failed to create server. Contact panel administrator."
       );
     }
   },
