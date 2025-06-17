@@ -172,7 +172,9 @@ export default {
             allocations: 1,
             backups: 1,
           },
-          allocation: availableAlloc.attributes.id,
+          allocation: {
+            default: availableAlloc.attributes.id,
+          },
           start_on_completion: false,
         },
         {
