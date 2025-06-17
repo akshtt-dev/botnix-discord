@@ -38,6 +38,7 @@ export default {
           { name: "Yearly", value: "yearly" },
           { name: "One-time", value: "one-time" }
         )
+        .setRequired(true)
     ),
 
   run: async ({ interaction, client }) => {
