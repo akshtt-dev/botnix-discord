@@ -8,10 +8,15 @@ export default {
     process.env.MONGODB_URI ||
     "",
   PTERODACTYL_PANEL: {
+    orgLogo: "",
+    orgName: "",
+    taxRate: 0.18,
+    showTax: false,
+    orgEmail: "support@example.com",
     UPI_ID: "",
     UPI_NAME: "",
     panelAdmins: [""],
-    panelURL: process.env.PTERODACTYL_PANEL_URL || "https://panel.botnix.cloud",
+    panelURL: process.env.PTERODACTYL_PANEL_URL || "",
     panelAPIKey:
       process.env.PTERODACTYL_PANEL_API_KEY ||
       "",
@@ -27,6 +32,7 @@ export default {
       nginx: { eggId: 20, nestId: 5 },
     },
     freeNodeId: "1",
+    premNodeId: "2",
     webhookURL: {
       createServer:
         "https://discord.com/api/webhooks/",
